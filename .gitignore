@@ -1,3 +1,5 @@
 dev-config.json
 etc/.ipynb_checkpoints
 *.txt
+__pycache__
+.idea
