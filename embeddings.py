@@ -32,7 +32,7 @@ class Embeddings:
     def _save_embedding(self, text: str, embedding: np.array) -> None:
         self._storage.save_embedding(
             text=text,
-            embedding=embedding.tobytes,
+            embedding=embedding,
             version=self._version,
         )
 

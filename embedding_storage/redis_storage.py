@@ -1,5 +1,6 @@
 from typing import Optional
 
+import numpy as np
 from redis.client import Redis
 from redis.commands.search.field import VectorField, TextField
 from redis.commands.search.query import Query
@@ -38,9 +39,9 @@ class RedisEmbeddingStorage(EmbeddingStorage):
     def text_to_version(self, text: str) -> Optional[str]:
         return self._redis.hget(f'text:{text}', 'version')
 
-    def save_embedding(self, text: str, embedding: bytes, version: str) -> None:
+    def save_embedding(self, text: str, embedding: np.array, version: str) -> None:
         self._redis.hset(f"text:{text}", mapping=dict(
-            embedding=embedding,
+            embedding=embedding.tobytes(),
             text=text,
             version=version,
         ))

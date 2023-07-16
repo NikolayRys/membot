@@ -1,4 +1,11 @@
 {
     "openai_api_key": "...",
-    "deepl_key": "..."
+    "deepl_key": "...",
+    "pg": {
+        "host": "localhost",
+        "admin_password": "...",
+        "password": "...",
+        "user": "postgres",
+        "db": "postgres"
+    }
 }

@@ -1,4 +1,6 @@
 dev_dir="$(dirname -- "$(which -- "$0" 2>/dev/null || realpath -- "$0")")"
-pg_password=$(cat "$dev_dir/../dev-config.json" | jq -r '.pg.password')
+user=$(cat "$dev_dir/../dev-config.json" | jq -r '.pg.user')
+password=$(cat "$dev_dir/../dev-config.json" | jq -r '.pg.password')
+db=$(cat "$dev_dir/../dev-config.json" | jq -r '.pg.db')
 
-PGPASSWORD=$pg_password psql -h localhost -p 5432 -U postgres 
+PGPASSWORD=$password psql $db -h localhost -p 5432 -U $user 
