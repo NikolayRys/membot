@@ -29,7 +29,7 @@ class Embeddings:
 
         return np.array(embedding)
 
-    def _save_embedding(self, text: str, embedding: np.array) -> None:
+    def _save_embedding(self, text: str, embedding: np.ndarray) -> None:
         self._storage.save_embedding(
             text=text,
             embedding=embedding,
@@ -47,6 +47,8 @@ class Embeddings:
         return embedding.tobytes()
 
     def knn(self, text: str, *, k: int = 100) -> List[str]:
-        emb: bytes = self._get_embedding(text).tobytes()
-
-        return self._storage.knn(emb, k=k, version=self._version).texts
+        return self._storage.knn(
+            self._get_embedding(text),
+            k=k,
+            version=self._version,
+        ).texts

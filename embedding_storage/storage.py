@@ -16,8 +16,8 @@ class EmbeddingStorage(Protocol):
     def text_to_version(self, text: str) -> Optional[str]:
         ...
 
-    def save_embedding(self, text: str, embedding: np.array, version: str) -> None:
+    def save_embedding(self, text: str, embedding: np.ndarray, version: str) -> None:
         ...
 
-    def knn(self, embedding: bytes, *, k: int = 100, version: str) -> SearchResult:
+    def knn(self, embedding: np.ndarray, *, k: int = 100, version: str) -> SearchResult:
         ...

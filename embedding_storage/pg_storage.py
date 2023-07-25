@@ -1,20 +1,9 @@
-import json
-from pathlib import Path
+import hashlib
 from typing import Optional
 
 import numpy as np
 import psycopg2
 from embedding_storage.storage import EmbeddingStorage, SearchResult
-
-
-def main():
-    with open(Path(__file__).absolute().parent / '..' / 'dev-config.json', 'r') as f:
-        CONFIG = json.load(f)
-    pg_config = CONFIG["pg"]
-
-    storage = PostgresEmbeddingStorage.from_config('test', pg_config)
-    storage.initialize()
-    storage.save_embedding('test', b'123' * 512, '1')
 
 
 class PostgresEmbeddingStorage(EmbeddingStorage):
@@ -38,20 +27,22 @@ class PostgresEmbeddingStorage(EmbeddingStorage):
             with self._pg.cursor() as c:
                 c.execute(f"""
                     CREATE TABLE IF NOT EXISTS {self._namespace}_texts (
-                        text TEXT NOT NULL PRIMARY KEY,
+                        text_md5 CHAR(32) NOT NULL PRIMARY KEY,
+                        text TEXT NOT NULL,
                         embedding vector(1536) NOT NULL,
                         version TEXT NOT NULL
                     );
                 """)
 
     def text_to_version(self, text: str) -> Optional[str]:
+        text_md5: str = hashlib.md5(text.encode('utf-8')).hexdigest()
         with self._pg:
             with self._pg.cursor() as c:
                 c.execute(f"""
                     SELECT version FROM {self._namespace}_texts
-                    WHERE text = %s
+                    WHERE text_md5 = %s
                     LIMIT 1;
-                """, (text,))
+                """, (text_md5,))
 
                 row = c.fetchone()
                 if row:
@@ -59,21 +50,29 @@ class PostgresEmbeddingStorage(EmbeddingStorage):
 
         return None
 
-    def save_embedding(self, text: str, embedding: np.array, version: str) -> None:
+    def save_embedding(self, text: str, embedding: np.ndarray, version: str) -> None:
+        text_md5: str = hashlib.md5(text.encode('utf-8')).hexdigest()
         with self._pg:
             with self._pg.cursor() as c:
                 c.execute(f"""
-                    INSERT INTO {self._namespace}_texts (text, embedding, version)
-                    VALUES (%s, %s, %s)
-                    ON CONFLICT (text) DO UPDATE
+                    INSERT INTO {self._namespace}_texts (text_md5, text, embedding, version)
+                    VALUES (%s, %s, %s, %s)
+                    ON CONFLICT (text_md5) DO UPDATE
                         SET embedding = EXCLUDED.embedding, version = EXCLUDED.version;
                     """,
-                    (text, list(embedding), version)
+                    (text_md5, text, list(embedding), version)
                 )
 
-    def knn(self, embedding: bytes, *, k: int = 100, version: str) -> SearchResult:
-        return SearchResult(texts=[])
+    def knn(self, embedding: np.ndarray,  *, k: int = 100, version: str) -> SearchResult:
+        with self._pg:
+            with self._pg.cursor() as c:
+                c.execute(f"""
+                    SELECT text
+                    FROM {self._namespace}_texts
+                    WHERE version = %s
+                    ORDER BY (1 - (embedding <=> %s::vector)) DESC
+                    LIMIT %s
+                """, (version, list(embedding), k)
+                )
 
-
-if __name__ == '__main__':
-    main()
+                return SearchResult(texts=[row[0] for row in c.fetchall()])

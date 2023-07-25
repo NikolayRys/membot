@@ -39,20 +39,22 @@ class RedisEmbeddingStorage(EmbeddingStorage):
     def text_to_version(self, text: str) -> Optional[str]:
         return self._redis.hget(f'text:{text}', 'version')
 
-    def save_embedding(self, text: str, embedding: np.array, version: str) -> None:
+    def save_embedding(self, text: str, embedding: np.ndarray, version: str) -> None:
         self._redis.hset(f"text:{text}", mapping=dict(
             embedding=embedding.tobytes(),
             text=text,
             version=version,
         ))
 
-    def knn(self, embedding: bytes, *, k: int = 100, version: str) -> SearchResult:
+    def knn(self, embedding: np.ndarray, *, k: int = 100, version: str) -> SearchResult:
         q = (
             Query(f"(@version:{version})=>[KNN {k} @embedding $e]")
             .return_field('text')
             .return_field('__embedding_score')
             .dialect(2)
         )
-        result = self._redis.ft(self._namespace).search(q, query_params={"e": embedding})
+        result = self._redis.ft(self._namespace).search(
+            q, query_params={"e": embedding.tobytes()}
+        )
 
         return SearchResult(texts=[d.text for d in result.docs])
